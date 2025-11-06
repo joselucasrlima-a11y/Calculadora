@@ -1,0 +1,212 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.Arrays;
+import javax.swing.border.LineBorder;
+
+
+
+public class Calculator implements ActionListener {
+
+    // --- VARIÁVEIS DE ESTADO DA CALCULADORA ---
+    private String num1 = "";
+    private String operador = "";
+    private boolean novoCalculo = true; 
+
+    // --- VARIÁVEIS DE INTERFACE (JÁ EXISTENTES) ---
+    int boardWidth = 360;
+    int boardHeight = 540;
+
+    Color customLightGray = new Color(212, 212, 210);
+    Color customDarkGray = new Color(80, 80, 80);
+    Color customBlack = new Color(28, 28, 28);
+    Color customOrangeGray = new Color(255, 149, 0);
+
+    JFrame frame = new JFrame("Calculator");
+    JLabel displayJLabel = new JLabel();
+    JPanel displayJPanel = new JPanel();
+    JPanel buttonsJPanel = new JPanel(); 
+    
+    String[] buttonLabels = {
+        "AC", "+/-", "%", "/",
+        "7", "8", "9", "*",
+        "4", "5", "6", "-",
+        "1", "2", "3", "+",
+        "0", ".", "="
+    };
+
+
+    Calculator() {
+        // ... (Configuração do Frame)
+        frame.setVisible(true);
+        frame.setSize(boardWidth, boardHeight);
+        frame.setLocationRelativeTo(null);
+        frame.setResizable(false);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLayout(new BorderLayout());
+
+        // ... (Configuração do Display)
+        displayJLabel.setBackground(customBlack);
+        displayJLabel.setForeground(Color.white);
+        displayJLabel.setFont(new Font("Arial", Font.PLAIN, 80));
+        displayJLabel.setHorizontalAlignment(JLabel.RIGHT);
+        displayJLabel.setText("0");
+        displayJLabel.setOpaque(true);
+
+        displayJPanel.setLayout(new BorderLayout());
+        displayJPanel.add(displayJLabel, BorderLayout.CENTER); 
+        frame.add(displayJPanel, BorderLayout.NORTH); 
+        
+        // ... (Configuração do Painel de Botões)
+        buttonsJPanel.setLayout(new GridLayout(5, 4, 10, 10)); 
+        buttonsJPanel.setBackground(customBlack);
+
+        addButtonsToPanel(); 
+        
+        frame.add(buttonsJPanel, BorderLayout.CENTER);
+    }
+    
+    private void addButtonsToPanel() {
+        for (String label : buttonLabels) {
+            JButton button = new JButton(label);
+            button.setFont(new Font("Arial", Font.BOLD, 25));
+            button.setOpaque(true);
+            button.setBorderPainted(false);
+            
+            // Define as cores
+            if (label.matches("[0-9]|\\.")) {
+                button.setBackground(customDarkGray);
+                button.setForeground(Color.WHITE);
+            } else if (label.matches("[/\\*\\-\\+\\%]")) {
+                button.setBackground(customOrangeGray); 
+                button.setForeground(Color.WHITE);
+            } else if (label.equals("AC") || label.equals("+/-")) { 
+                button.setBackground(customLightGray);
+                button.setForeground(Color.BLACK);
+            } else if (label.equals("=")) { // Botão de igual também laranja
+                button.setBackground(customOrangeGray);
+                button.setForeground(Color.WHITE);
+            }
+            
+            // Adiciona o ActionListener: a própria classe 'Calculator' ouvirá o clique
+            button.addActionListener(this); 
+            
+            buttonsJPanel.add(button);
+        }
+    }
+
+
+    // =========================================================
+    // 3. IMPLEMENTAÇÃO DO MÉTODO DE TRATAMENTO DE EVENTOS (CLIQUE)
+    // =========================================================
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        // Pega o texto (label) do botão que foi clicado
+        String comando = e.getActionCommand(); 
+
+        if (comando.matches("[0-9]")) { // Se for um dígito (0-9)
+            adicionarDigito(comando);
+        } else if (comando.equals(".")) { // Se for o ponto decimal
+            adicionarDigito(comando);
+        } else if (comando.equals("AC")) { // Botão Limpar (All Clear)
+            limparTudo();
+        } else if (comando.matches("[/\\*\\-\\+]")) { // Operadores básicos
+            setOperador(comando);
+        } else if (comando.equals("=")) { // Botão Igual
+            calcularResultado();
+        } 
+        // Lógica para "%" e "+/-" não está implementada, mas este é o local ideal.
+    }
+
+
+    // =========================================================
+    // 4. MÉTODOS DE LÓGICA DE CÁLCULO
+    // =========================================================
+    
+    private void adicionarDigito(String valor) {
+        if (novoCalculo) {
+            displayJLabel.setText(valor.equals(".") ? "0." : valor);
+            novoCalculo = false;
+        } else {
+            String textoAtual = displayJLabel.getText();
+            
+            if (textoAtual.equals("0") && !valor.equals(".")) {
+                displayJLabel.setText(valor);
+            } else if (valor.equals(".") && textoAtual.contains(".")) {
+                // Não permite múltiplos pontos decimais
+            } else {
+                displayJLabel.setText(textoAtual + valor);
+            }
+        }
+    }
+    
+    private void setOperador(String op) {
+        // Se houver cálculo pendente, executa-o antes de definir o novo operador
+        if (!num1.isEmpty() && !operador.isEmpty() && !novoCalculo) {
+            calcularResultado();
+            num1 = displayJLabel.getText();
+        } else {
+            num1 = displayJLabel.getText();
+        }
+        
+        operador = op;
+        novoCalculo = true; // Prepara para receber o segundo número
+    }
+
+    private void calcularResultado() {
+        if (num1.isEmpty() || operador.isEmpty() || novoCalculo) {
+            return; 
+        }
+
+        try {
+            double primeiroNum = Double.parseDouble(num1);
+            double segundoNum = Double.parseDouble(displayJLabel.getText());
+            double resultado = 0;
+
+            switch (operador) {
+                case "+": resultado = primeiroNum + segundoNum; break;
+                case "-": resultado = primeiroNum - segundoNum; break;
+                case "*": resultado = primeiroNum * segundoNum; break;
+                case "/":
+                    if (segundoNum == 0) {
+                        JOptionPane.showMessageDialog(frame, "Divisão por zero não permitida!");
+                        limparTudo();
+                        return;
+                    }
+                    resultado = primeiroNum / segundoNum;
+                    break;
+            }
+
+            // Formata a exibição (remove o ".0" se for um inteiro)
+            String resStr;
+            if (resultado == (long) resultado) {
+                resStr = String.format("%d", (long) resultado);
+            } else {
+                resStr = String.valueOf(resultado);
+            }
+
+            displayJLabel.setText(resStr);
+            num1 = ""; 
+            operador = ""; 
+            novoCalculo = true; 
+
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(frame, "Erro de formato numérico!");
+            limparTudo();
+        }
+    }
+    
+    private void limparTudo() {
+        num1 = "";
+        operador = "";
+        displayJLabel.setText("0");
+        novoCalculo = true;
+    }
+
+
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new Calculator());
+    }
+}
